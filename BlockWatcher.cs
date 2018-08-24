@@ -1,10 +1,7 @@
 ﻿using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Utils;
@@ -19,6 +16,7 @@ namespace performance_metrics
         {
             MyEntities.OnEntityCreate += OnEntityCreate;
             MyEntities.OnEntityDelete += OnEntityDelete;
+            MyEntities.OnEntityRemove += OnEntityDelete;
 
             foreach (var entity in MyEntities.GetEntities().Where((x) => (x as IMyCubeGrid) != null))
                 OnEntityCreate(entity);

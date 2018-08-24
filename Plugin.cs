@@ -1,12 +1,6 @@
 ﻿using Sandbox;
-using Sandbox.Game.Entities.Blocks;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using VRage.Plugins;
 
@@ -17,6 +11,7 @@ namespace performance_metrics
         private WebServer ws;
         private Metric metric;
         private BlockWatcher watcher;
+        private MySandboxGame sandboxGame;
         static System.Timers.Timer ticker;
 
         public void Dispose()
@@ -29,6 +24,8 @@ namespace performance_metrics
 
         public void Init(object gameInstance)
         {
+            sandboxGame = gameInstance as MySandboxGame;
+
             metric = new Metric();
 
             watcher = new BlockWatcher();
@@ -55,14 +52,8 @@ namespace performance_metrics
             metric.Process.PrivateMemorySize = process.PrivateMemorySize64;
             metric.Process.VirtualMemorySize = process.VirtualMemorySize64;
 
-            metric.ProgrammableBlocks.Clear();
-            watcher.ProgrammableBlocks.ForEach((x) =>
-            {
-                metric.ProgrammableBlocks.Add(new ProgrammableBlocks()
-                {
-                    Enabled = x.Value.Enabled,
-                });
-            });
+            metric.ProgrammableBlocks = watcher.ProgrammableBlocks.Count;
+            metric.ProgrammableBlocksEnabled = watcher.ProgrammableBlocks.Count((x) => x.Value.Enabled);
         }
 
         public string SendHttpResponseResponse(HttpListenerRequest request)
