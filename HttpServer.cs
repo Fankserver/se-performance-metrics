@@ -18,7 +18,7 @@ namespace performance_metrics
                 throw new NotSupportedException("Needs Windows XP SP2, Server 2003 or later.");
             }
 
-            // URI prefixes are required eg: "http://localhost:8080/test/"
+            // URI prefixes are required eg: "http://localhost:8080/"
             if (prefixes == null || prefixes.Count == 0)
             {
                 throw new ArgumentException("URI prefixes are required");
