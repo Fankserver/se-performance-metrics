@@ -127,26 +127,40 @@ namespace performance_metrics
                         FieldInfo info = type.GetField("m_entitiesForUpdateOnce", BindingFlags.NonPublic | BindingFlags.Static);
                         object value = info.GetValue(null);
                         CachingList<MyEntity> m_entitiesForUpdateOnce = value as CachingList<MyEntity>;
+                        List<MyEntity> x_entitiesForUpdateOnce = new List<MyEntity>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity> m_entitiesForUpdate = value as MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity>;
+                        List<MyEntity> x_entitiesForUpdate = new List<MyEntity>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate10", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate10 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
+                        List<MyEntity> x_entitiesForUpdate10 = new List<MyEntity>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate100", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate100 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
+                        List<MyEntity> x_entitiesForUpdate100 = new List<MyEntity>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForSimulate", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForSimulate = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
+                        List<MyEntity> x_entitiesForSimulate = new List<MyEntity>();
+
+                        Torch.Invoke(() =>
+                        {
+                            x_entitiesForUpdateOnce = m_entitiesForUpdateOnce.ToList();
+                            x_entitiesForUpdate = m_entitiesForUpdate.List.ToList();
+                            x_entitiesForUpdate10 = m_entitiesForUpdate10.List.ToList();
+                            x_entitiesForUpdate100 = m_entitiesForUpdate100.List.ToList();
+                            x_entitiesForSimulate = m_entitiesForSimulate.List.ToList();
+                        });
 
                         foreach (MyEntity item in entities)
                         {
@@ -213,7 +227,7 @@ namespace performance_metrics
                                 writer.WritePropertyName("PCU");
                                 writer.Write(myCubeGrid.BlocksPCU);
                                 writer.WritePropertyName("Concealed");
-                                writer.Write(m_entitiesForUpdateOnce.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate10.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate100.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForSimulate.List.Any((x) => x.EntityId == myCubeGrid.EntityId) ? false : true);
+                                writer.Write(x_entitiesForUpdateOnce.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForUpdate.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForUpdate10.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForUpdate100.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForSimulate.Any((x) => x.EntityId == myCubeGrid.EntityId) ? false : true);
                                 writer.WritePropertyName("DampenersEnabled");
                                 writer.Write(myCubeGrid.DampenersEnabled);
                                 writer.WritePropertyName("IsStatic");

@@ -85,7 +85,7 @@ namespace performance_metrics
                 }
                 catch (Exception ex)
                 {
-                    // ignored
+                    LogManager.GetCurrentClassLogger().Error(ex);
                 }
             });
         }
