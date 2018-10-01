@@ -5,8 +5,11 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using Torch.API;
 using Torch.Managers;
@@ -119,6 +122,32 @@ namespace performance_metrics
                     {
                         ICollection<MyPlayer> onlinePlayers = MySession.Static.Players.GetOnlinePlayers();
                         MyConcurrentHashSet<MyEntity> entities = MyEntities.GetEntities();
+
+                        Type type = typeof(MyEntities);
+                        FieldInfo info = type.GetField("m_entitiesForUpdateOnce", BindingFlags.NonPublic | BindingFlags.Static);
+                        object value = info.GetValue(null);
+                        CachingList<MyEntity> m_entitiesForUpdateOnce = value as CachingList<MyEntity>;
+
+                        type = typeof(MyEntities);
+                        info = type.GetField("m_entitiesForUpdate", BindingFlags.NonPublic | BindingFlags.Static);
+                        value = info.GetValue(null);
+                        MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity> m_entitiesForUpdate = value as MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity>;
+
+                        type = typeof(MyEntities);
+                        info = type.GetField("m_entitiesForUpdate10", BindingFlags.NonPublic | BindingFlags.Static);
+                        value = info.GetValue(null);
+                        MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate10 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
+
+                        type = typeof(MyEntities);
+                        info = type.GetField("m_entitiesForUpdate100", BindingFlags.NonPublic | BindingFlags.Static);
+                        value = info.GetValue(null);
+                        MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate100 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
+
+                        type = typeof(MyEntities);
+                        info = type.GetField("m_entitiesForSimulate", BindingFlags.NonPublic | BindingFlags.Static);
+                        value = info.GetValue(null);
+                        MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForSimulate = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
+
                         foreach (MyEntity item in entities)
                         {
                             MyCubeGrid myCubeGrid = item as MyCubeGrid;
@@ -139,7 +168,7 @@ namespace performance_metrics
                                     }
 
                                     IMyFaction myFaction = MySession.Static.Factions.TryGetPlayerFaction(steamId);
-                                    if (myIdentity != null)
+                                    if (myFaction != null)
                                     {
                                         factionTag = myFaction.Tag;
                                         factionName = myFaction.Name;
@@ -184,10 +213,9 @@ namespace performance_metrics
                                 writer.WritePropertyName("PCU");
                                 writer.Write(myCubeGrid.BlocksPCU);
                                 writer.WritePropertyName("Concealed");
-                                writer.Write((myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdateBeforeNextFrame) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdate) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdate10) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdate100) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsSimulate) != 0 ? false : true);
+                                writer.Write(m_entitiesForUpdateOnce.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate10.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate100.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForSimulate.List.Any((x) => x.EntityId == myCubeGrid.EntityId) ? false : true);
                                 writer.WritePropertyName("DampenersEnabled");
                                 writer.Write(myCubeGrid.DampenersEnabled);
-                                
                                 writer.WriteObjectEnd();
                             }
                         }

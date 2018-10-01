@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
@@ -67,9 +68,9 @@ namespace performance_metrics
                                 ctx.Response.ContentLength64 = buf.Length;
                                 ctx.Response.OutputStream.Write(buf, 0, buf.Length);
                             }
-                            catch
+                            catch (Exception ex)
                             {
-                                // ignored
+                                LogManager.GetCurrentClassLogger().Error(ex);
                             }
                             finally
                             {
