@@ -13,6 +13,7 @@ using Torch.Managers;
 using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Entity;
+using VRage.Game.ModAPI;
 using VRageMath;
 
 namespace performance_metrics
@@ -55,14 +56,12 @@ namespace performance_metrics
 
             switch (request.Url.AbsolutePath)
             {
-                case "/vrageremote/v1/server":
+                case "/metrics/v1/server":
                     int usedPCU = 0;
                     if (MySession.Static != null && MySession.Static.GlobalBlockLimits != null)
                     {
                         usedPCU = MySession.Static.GlobalBlockLimits.PCUBuilt;
                     }
-                    writer.WriteObjectStart();
-                    writer.WritePropertyName("data");
                     writer.WriteObjectStart();
                     writer.WritePropertyName("Version");
                     writer.Write(MyFinalBuildConstants.APP_VERSION_STRING_DOTS.ToString());
@@ -82,14 +81,39 @@ namespace performance_metrics
                     writer.Write((Sync.Clients != null) ? (Sync.Clients.Count - 1) : 0);
                     writer.WritePropertyName("UsedPCU");
                     writer.Write(usedPCU);
-                    writer.WriteObjectEnd();
+                    writer.WritePropertyName("MaxPlayers");
+                    writer.Write(MySession.Static.MaxPlayers);
+                    writer.WritePropertyName("MaxFactionsCount");
+                    writer.Write(MySession.Static.MaxFactionsCount);
+                    writer.WritePropertyName("MaxFloatingObjects");
+                    writer.Write(MySession.Static.MaxFloatingObjects);
+                    writer.WritePropertyName("MaxGridSize");
+                    writer.Write(MySession.Static.MaxGridSize);
+                    writer.WritePropertyName("MaxBlocksPerPlayer");
+                    writer.Write(MySession.Static.MaxBlocksPerPlayer);
+                    writer.WritePropertyName("BlockLimitsEnabled");
+                    string blockLimit = "";
+                    switch (MySession.Static.BlockLimitsEnabled)
+                    {
+                        case MyBlockLimitsEnabledEnum.GLOBALLY:
+                            blockLimit = "globally";
+                            break;
+                        case MyBlockLimitsEnabledEnum.NONE:
+                            blockLimit = "none";
+                            break;
+                        case MyBlockLimitsEnabledEnum.PER_FACTION:
+                            blockLimit = "faction";
+                            break;
+                        case MyBlockLimitsEnabledEnum.PER_PLAYER:
+                            blockLimit = "faction";
+                            break;
+                    }
+                    writer.Write(blockLimit);
+                    writer.WritePropertyName("TotalPCU");
+                    writer.Write(MySession.Static.TotalPCU);
                     writer.WriteObjectEnd();
                     break;
-                case "/vrageremote/v1/session/grids":
-                    writer.WriteObjectStart();
-                    writer.WritePropertyName("data");
-                    writer.WriteObjectStart();
-                    writer.WritePropertyName("Grids");
+                case "/metrics/v1/session/grids":
                     writer.WriteArrayStart();
                     if (MySession.Static != null && MySession.Static.Ready)
                     {
@@ -100,39 +124,41 @@ namespace performance_metrics
                             MyCubeGrid myCubeGrid = item as MyCubeGrid;
                             if (myCubeGrid != null && !myCubeGrid.Closed && myCubeGrid.Physics != null)
                             {
-                                bool value = myCubeGrid.GridSystems.ResourceDistributor.ResourceStateByType(MyResourceDistributorComponent.ElectricityId, withRecompute: false) != MyResourceStateEnum.NoPower;
-                                bool flag = myCubeGrid.GridSizeEnum == MyCubeSize.Large;
-                                long entityId = myCubeGrid.EntityId;
-                                string displayName = myCubeGrid.DisplayName;
-                                int blocksCount = myCubeGrid.BlocksCount;
-                                float mass = myCubeGrid.Physics.Mass;
-                                Vector3D position = myCubeGrid.PositionComp.GetPosition();
-                                float value2 = myCubeGrid.Physics.LinearVelocity.Length();
-                                float playerDistance = MySession.GetPlayerDistance(myCubeGrid, onlinePlayers);
-                                long value3 = 0L;
-                                string value4 = string.Empty;
+                                long steamId = 0L;
+                                string displayName = string.Empty;
+                                string factionTag = string.Empty;
+                                string factionName = string.Empty;
                                 if (myCubeGrid.BigOwners.Count > 0)
                                 {
-                                    value3 = myCubeGrid.BigOwners[0];
-                                    MyIdentity myIdentity = MySession.Static.Players.TryGetIdentity(myCubeGrid.BigOwners[0]);
+                                    steamId = myCubeGrid.BigOwners[0];
+
+                                    MyIdentity myIdentity = MySession.Static.Players.TryGetIdentity(steamId);
                                     if (myIdentity != null)
                                     {
-                                        value4 = myIdentity.DisplayName;
+                                        displayName = myIdentity.DisplayName;
+                                    }
+
+                                    IMyFaction myFaction = MySession.Static.Factions.TryGetPlayerFaction(steamId);
+                                    if (myIdentity != null)
+                                    {
+                                        factionTag = myFaction.Tag;
+                                        factionName = myFaction.Name;
                                     }
                                 }
-                                int blocksPCU = myCubeGrid.BlocksPCU;
+
                                 writer.WriteObjectStart();
                                 writer.WritePropertyName("DisplayName");
-                                writer.Write(displayName);
+                                writer.Write(myCubeGrid.DisplayName);
                                 writer.WritePropertyName("EntityId");
-                                writer.Write(entityId);
+                                writer.Write(myCubeGrid.EntityId);
                                 writer.WritePropertyName("GridSize");
-                                writer.Write(flag ? "Large" : "Small");
+                                writer.Write(myCubeGrid.GridSizeEnum == MyCubeSize.Large ? "Large" : "Small");
                                 writer.WritePropertyName("BlocksCount");
-                                writer.Write(blocksCount);
+                                writer.Write(myCubeGrid.BlocksCount);
                                 writer.WritePropertyName("Mass");
-                                writer.Write(mass);
+                                writer.Write(myCubeGrid.Physics.Mass);
                                 writer.WritePropertyName("Position");
+                                Vector3D position = myCubeGrid.PositionComp.GetPosition();
                                 writer.WriteObjectStart();
                                 writer.WritePropertyName("X");
                                 writer.Write(position.X);
@@ -142,24 +168,31 @@ namespace performance_metrics
                                 writer.Write(position.Z);
                                 writer.WriteObjectEnd();
                                 writer.WritePropertyName("LinearSpeed");
-                                writer.Write(value2);
+                                writer.Write(myCubeGrid.Physics.LinearVelocity.Length());
                                 writer.WritePropertyName("DistanceToPlayer");
-                                writer.Write(playerDistance);
+                                writer.Write(MySession.GetPlayerDistance(myCubeGrid, onlinePlayers));
                                 writer.WritePropertyName("OwnerSteamId");
-                                writer.Write(value3);
+                                writer.Write(steamId);
                                 writer.WritePropertyName("OwnerDisplayName");
-                                writer.Write(value4);
+                                writer.Write(displayName);
+                                writer.WritePropertyName("OwnerFactionTag");
+                                writer.Write(factionTag);
+                                writer.WritePropertyName("OwnerFactionName");
+                                writer.Write(factionName);
                                 writer.WritePropertyName("IsPowered");
-                                writer.Write(value);
+                                writer.Write(myCubeGrid.GridSystems.ResourceDistributor.ResourceStateByType(MyResourceDistributorComponent.ElectricityId, withRecompute: false) != MyResourceStateEnum.NoPower);
                                 writer.WritePropertyName("PCU");
-                                writer.Write(blocksPCU);
+                                writer.Write(myCubeGrid.BlocksPCU);
+                                writer.WritePropertyName("Concealed");
+                                writer.Write((myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdateBeforeNextFrame) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdate) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdate10) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsUpdate100) != 0 || (myCubeGrid.Flags & VRage.ModAPI.EntityFlags.NeedsSimulate) != 0 ? false : true);
+                                writer.WritePropertyName("DampenersEnabled");
+                                writer.Write(myCubeGrid.DampenersEnabled);
+                                
                                 writer.WriteObjectEnd();
                             }
                         }
                     }
                     writer.WriteArrayEnd();
-                    writer.WriteObjectEnd();
-                    writer.WriteObjectEnd();
                     break;
             }
 
