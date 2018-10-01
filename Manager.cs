@@ -108,7 +108,7 @@ namespace performance_metrics
                             blockLimit = "faction";
                             break;
                         case MyBlockLimitsEnabledEnum.PER_PLAYER:
-                            blockLimit = "faction";
+                            blockLimit = "player";
                             break;
                     }
                     writer.Write(blockLimit);
