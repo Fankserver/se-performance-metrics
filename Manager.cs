@@ -216,6 +216,8 @@ namespace performance_metrics
                                 writer.Write(m_entitiesForUpdateOnce.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate10.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForUpdate100.List.Any((x) => x.EntityId == myCubeGrid.EntityId) || m_entitiesForSimulate.List.Any((x) => x.EntityId == myCubeGrid.EntityId) ? false : true);
                                 writer.WritePropertyName("DampenersEnabled");
                                 writer.Write(myCubeGrid.DampenersEnabled);
+                                writer.WritePropertyName("IsStatic");
+                                writer.Write(myCubeGrid.Physics.IsStatic);
                                 writer.WriteObjectEnd();
                             }
                         }
