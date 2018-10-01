@@ -127,39 +127,39 @@ namespace performance_metrics
                         FieldInfo info = type.GetField("m_entitiesForUpdateOnce", BindingFlags.NonPublic | BindingFlags.Static);
                         object value = info.GetValue(null);
                         CachingList<MyEntity> m_entitiesForUpdateOnce = value as CachingList<MyEntity>;
-                        List<MyEntity> x_entitiesForUpdateOnce = new List<MyEntity>();
+                        List<long> x_entitiesForUpdateOnce = new List<long>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity> m_entitiesForUpdate = value as MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity>;
-                        List<MyEntity> x_entitiesForUpdate = new List<MyEntity>();
+                        List<long> x_entitiesForUpdate = new List<long>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate10", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate10 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
-                        List<MyEntity> x_entitiesForUpdate10 = new List<MyEntity>();
+                        List<long> x_entitiesForUpdate10 = new List<long>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate100", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate100 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
-                        List<MyEntity> x_entitiesForUpdate100 = new List<MyEntity>();
+                        List<long> x_entitiesForUpdate100 = new List<long>();
 
                         type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForSimulate", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForSimulate = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
-                        List<MyEntity> x_entitiesForSimulate = new List<MyEntity>();
+                        List<long> x_entitiesForSimulate = new List<long>();
 
-                        Torch.Invoke(() =>
+                        Torch.InvokeBlocking(() =>
                         {
-                            x_entitiesForUpdateOnce = m_entitiesForUpdateOnce.ToList();
-                            x_entitiesForUpdate = m_entitiesForUpdate.List.ToList();
-                            x_entitiesForUpdate10 = m_entitiesForUpdate10.List.ToList();
-                            x_entitiesForUpdate100 = m_entitiesForUpdate100.List.ToList();
-                            x_entitiesForSimulate = m_entitiesForSimulate.List.ToList();
+                            x_entitiesForUpdateOnce = m_entitiesForUpdateOnce.Select((x) => x.EntityId).ToList();
+                            x_entitiesForUpdate = m_entitiesForUpdate.List.Select((x) => x.EntityId).ToList();
+                            x_entitiesForUpdate10 = m_entitiesForUpdate10.List.Select((x) => x.EntityId).ToList();
+                            x_entitiesForUpdate100 = m_entitiesForUpdate100.List.Select((x) => x.EntityId).ToList();
+                            x_entitiesForSimulate = m_entitiesForSimulate.List.Select((x) => x.EntityId).ToList();
                         });
 
                         foreach (MyEntity item in entities)
@@ -227,7 +227,7 @@ namespace performance_metrics
                                 writer.WritePropertyName("PCU");
                                 writer.Write(myCubeGrid.BlocksPCU);
                                 writer.WritePropertyName("Concealed");
-                                writer.Write(x_entitiesForUpdateOnce.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForUpdate.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForUpdate10.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForUpdate100.Any((x) => x.EntityId == myCubeGrid.EntityId) || x_entitiesForSimulate.Any((x) => x.EntityId == myCubeGrid.EntityId) ? false : true);
+                                writer.Write(x_entitiesForUpdateOnce.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForUpdate.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForUpdate10.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForUpdate100.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForSimulate.Any((x) => x == myCubeGrid.EntityId) ? false : true);
                                 writer.WritePropertyName("DampenersEnabled");
                                 writer.Write(myCubeGrid.DampenersEnabled);
                                 writer.WritePropertyName("IsStatic");
