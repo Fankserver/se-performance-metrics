@@ -324,6 +324,178 @@ namespace performance_metrics
                     }
                     writer.WriteArrayEnd();
                     break;
+                case "/metrics/v1/session/asteroids":
+                    writer.WriteArrayStart();
+                    if (MySession.Static != null && MySession.Static.Ready)
+                    {
+                        MyConcurrentHashSet<MyEntity> entities = MyEntities.GetEntities();
+                        foreach (MyEntity item in entities)
+                        {
+                            MyVoxelBase myVoxelBase = item as MyVoxelBase;
+                            if (myVoxelBase != null && !(myVoxelBase is MyPlanet) && !myVoxelBase.Closed)
+                            {
+                                writer.WriteObjectStart();
+                                writer.WritePropertyName("DisplayName");
+                                writer.Write(myVoxelBase.StorageName);
+                                writer.WritePropertyName("EntityId");
+                                writer.Write(myVoxelBase.EntityId);
+                                Vector3D position = myVoxelBase.PositionComp.GetPosition();
+                                writer.WritePropertyName("Position");
+                                writer.WriteObjectStart();
+                                writer.WritePropertyName("X");
+                                writer.Write(position.X);
+                                writer.WritePropertyName("Y");
+                                writer.Write(position.Y);
+                                writer.WritePropertyName("Z");
+                                writer.Write(position.Z);
+                                writer.WriteObjectEnd();
+                                writer.WriteObjectEnd();
+                            }
+                        }
+                    }
+                    writer.WriteArrayEnd();
+                    break;
+                case "/metrics/v1/session/planets":
+                    writer.WriteArrayStart();
+                    if (MySession.Static != null && MySession.Static.Ready)
+                    {
+                        MyConcurrentHashSet<MyEntity> entities = MyEntities.GetEntities();
+                        foreach (MyEntity item in entities)
+                        {
+                            MyPlanet myPlanet = item as MyPlanet;
+                            if (myPlanet != null && !myPlanet.Closed)
+                            {
+                                string storageName = myPlanet.StorageName;
+                                long entityId = myPlanet.EntityId;
+                                writer.WriteObjectStart();
+                                writer.WritePropertyName("DisplayName");
+                                writer.Write(storageName);
+                                writer.WritePropertyName("EntityId");
+                                writer.Write(entityId);
+                                Vector3D position = myPlanet.PositionComp.GetPosition();
+                                writer.WritePropertyName("Position");
+                                writer.WriteObjectStart();
+                                writer.WritePropertyName("X");
+                                writer.Write(position.X);
+                                writer.WritePropertyName("Y");
+                                writer.Write(position.Y);
+                                writer.WritePropertyName("Z");
+                                writer.Write(position.Z);
+                                writer.WriteObjectEnd();
+                                writer.WriteObjectEnd();
+                            }
+                        }
+                    }
+                    writer.WriteArrayEnd();
+                    break;
+                case "/metrics/v1/session/floatingObjects":
+                    writer.WriteArrayStart();
+                    if (MySession.Static != null && MySession.Static.Ready)
+                    {
+                        ICollection<MyPlayer> onlinePlayers = MySession.Static.Players.GetOnlinePlayers();
+                        MyConcurrentHashSet<MyEntity> entities = MyEntities.GetEntities();
+                        foreach (MyEntity item in entities)
+                        {
+                            MyFloatingObject myFloatingObject = item as MyFloatingObject;
+                            MyInventoryBagEntity myInventoryBagEntity = item as MyInventoryBagEntity;
+                            if (myFloatingObject != null || myInventoryBagEntity != null)
+                            {
+                                string value = string.Empty;
+                                long value2 = 0L;
+                                string value3 = string.Empty;
+                                float value4 = 0f;
+                                Vector3D vector3D = Vector3D.Zero;
+                                float value5 = 0f;
+                                float value6 = 0f;
+                                if (myFloatingObject != null)
+                                {
+                                    if (myFloatingObject.Closed || myFloatingObject.Physics == null)
+                                    {
+                                        continue;
+                                    }
+                                    value = myFloatingObject.DisplayName;
+                                    value2 = myFloatingObject.EntityId;
+                                    value3 = "FloatingObject";
+                                    value4 = myFloatingObject.Physics.Mass;
+                                    vector3D = myFloatingObject.PositionComp.GetPosition();
+                                    value5 = myFloatingObject.Physics.LinearVelocity.Length();
+                                    value6 = MySession.GetPlayerDistance(myFloatingObject, onlinePlayers);
+                                }
+                                else if (myInventoryBagEntity != null)
+                                {
+                                    if (myInventoryBagEntity.Closed || myInventoryBagEntity.Physics == null)
+                                    {
+                                        continue;
+                                    }
+                                    value = myInventoryBagEntity.DisplayName;
+                                    value2 = myInventoryBagEntity.EntityId;
+                                    value3 = "Bag";
+                                    value4 = myInventoryBagEntity.Physics.Mass;
+                                    vector3D = myInventoryBagEntity.PositionComp.GetPosition();
+                                    value5 = myInventoryBagEntity.Physics.LinearVelocity.Length();
+                                    value6 = MySession.GetPlayerDistance(myInventoryBagEntity, onlinePlayers);
+                                }
+                                writer.WriteObjectStart();
+                                writer.WritePropertyName("DisplayName");
+                                writer.Write(value);
+                                writer.WritePropertyName("EntityId");
+                                writer.Write(value2);
+                                writer.WritePropertyName("Kind");
+                                writer.Write(value3);
+                                writer.WritePropertyName("Mass");
+                                writer.Write(value4);
+                                writer.WritePropertyName("Position");
+                                writer.WriteObjectStart();
+                                writer.WritePropertyName("X");
+                                writer.Write(vector3D.X);
+                                writer.WritePropertyName("Y");
+                                writer.Write(vector3D.Y);
+                                writer.WritePropertyName("Z");
+                                writer.Write(vector3D.Z);
+                                writer.WriteObjectEnd();
+                                writer.WritePropertyName("LinearSpeed");
+                                writer.Write(value5);
+                                writer.WritePropertyName("DistanceToPlayer");
+                                writer.Write(value6);
+                                writer.WriteObjectEnd();
+                            }
+                        }
+                    }
+                    writer.WriteArrayEnd();
+                    break;
+                case "/metrics/v1/session/factions":
+                    writer.WriteArrayStart();
+                    if (MySession.Static != null && MySession.Static.Ready)
+                    {
+                        List<MyFaction> factions = MySession.Static.Factions.Select((x) => x.Value).ToList();
+                        foreach (MyFaction myfaction in factions)
+                        {
+                            writer.WriteObjectStart();
+                            writer.WritePropertyName("AcceptHumans");
+                            writer.Write(myfaction.AcceptHumans);
+                            writer.WritePropertyName("AutoAcceptMember");
+                            writer.Write(myfaction.AutoAcceptMember);
+                            writer.WritePropertyName("AutoAcceptPeace");
+                            writer.Write(myfaction.AutoAcceptPeace);
+                            writer.WritePropertyName("EnableFriendlyFire");
+                            writer.Write(myfaction.EnableFriendlyFire);
+                            writer.WritePropertyName("FactionId");
+                            writer.Write(myfaction.FactionId);
+                            writer.WritePropertyName("FounderId");
+                            writer.Write(myfaction.FounderId);
+                            writer.WritePropertyName("MemberCount");
+                            writer.Write(myfaction.Members.Count);
+                            writer.WritePropertyName("Name");
+                            writer.Write(myfaction.Name);
+                            writer.WritePropertyName("Tag");
+                            writer.Write(myfaction.Tag);
+                            writer.WritePropertyName("NPCOnly");
+                            writer.Write(myfaction.Members.All((x) => MySession.Static.Players.IdentityIsNpc(x.Value.PlayerId)));
+                            writer.WriteObjectEnd();
+                        }
+                    }
+                    writer.WriteArrayEnd();
+                    break;
             }
 
             return sb.ToString();
