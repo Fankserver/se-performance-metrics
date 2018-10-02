@@ -52,8 +52,6 @@ namespace performance_metrics
 
         public string SendHttpResponseResponse(HttpListenerRequest request)
         {
-            //LogManager.GetCurrentClassLogger().Debug($"Process request: {request.Url.AbsolutePath}");
-
             StringBuilder sb = new StringBuilder();
             JsonWriter writer = new JsonWriter(sb);
 
@@ -61,9 +59,39 @@ namespace performance_metrics
             {
                 case "/metrics/v1/server":
                     int usedPCU = 0;
-                    if (MySession.Static != null && MySession.Static.GlobalBlockLimits != null)
-                    {
-                        usedPCU = MySession.Static.GlobalBlockLimits.PCUBuilt;
+                    int maxPlayers = 0;
+                    int maxFactionCount = 0;
+                    int maxFloatingObjects = 0;
+                    int maxGridSize = 0;
+                    int maxBlocksPerPlayer = 0;
+                    string blockLimit = "";
+                    int totalPCU = 0;
+                    if (MySession.Static != null) {
+                        if (MySession.Static.GlobalBlockLimits != null)
+                        {
+                            usedPCU = MySession.Static.GlobalBlockLimits.PCUBuilt;
+                        }
+                        maxPlayers = MySession.Static.MaxPlayers;
+                        maxFactionCount = MySession.Static.MaxFactionsCount;
+                        maxFloatingObjects = MySession.Static.MaxFloatingObjects;
+                        maxGridSize = MySession.Static.MaxGridSize;
+                        maxBlocksPerPlayer = MySession.Static.MaxBlocksPerPlayer;
+                        totalPCU = MySession.Static.TotalPCU;
+                        switch (MySession.Static.BlockLimitsEnabled)
+                        {
+                            case MyBlockLimitsEnabledEnum.GLOBALLY:
+                                blockLimit = "globally";
+                                break;
+                            case MyBlockLimitsEnabledEnum.NONE:
+                                blockLimit = "none";
+                                break;
+                            case MyBlockLimitsEnabledEnum.PER_FACTION:
+                                blockLimit = "faction";
+                                break;
+                            case MyBlockLimitsEnabledEnum.PER_PLAYER:
+                                blockLimit = "player";
+                                break;
+                        }
                     }
                     writer.WriteObjectStart();
                     writer.WritePropertyName("Version");
@@ -85,35 +113,19 @@ namespace performance_metrics
                     writer.WritePropertyName("UsedPCU");
                     writer.Write(usedPCU);
                     writer.WritePropertyName("MaxPlayers");
-                    writer.Write(MySession.Static.MaxPlayers);
+                    writer.Write(maxPlayers);
                     writer.WritePropertyName("MaxFactionsCount");
-                    writer.Write(MySession.Static.MaxFactionsCount);
+                    writer.Write(maxFactionCount);
                     writer.WritePropertyName("MaxFloatingObjects");
-                    writer.Write(MySession.Static.MaxFloatingObjects);
+                    writer.Write(maxFloatingObjects);
                     writer.WritePropertyName("MaxGridSize");
-                    writer.Write(MySession.Static.MaxGridSize);
+                    writer.Write(maxGridSize);
                     writer.WritePropertyName("MaxBlocksPerPlayer");
-                    writer.Write(MySession.Static.MaxBlocksPerPlayer);
+                    writer.Write(maxBlocksPerPlayer);
                     writer.WritePropertyName("BlockLimitsEnabled");
-                    string blockLimit = "";
-                    switch (MySession.Static.BlockLimitsEnabled)
-                    {
-                        case MyBlockLimitsEnabledEnum.GLOBALLY:
-                            blockLimit = "globally";
-                            break;
-                        case MyBlockLimitsEnabledEnum.NONE:
-                            blockLimit = "none";
-                            break;
-                        case MyBlockLimitsEnabledEnum.PER_FACTION:
-                            blockLimit = "faction";
-                            break;
-                        case MyBlockLimitsEnabledEnum.PER_PLAYER:
-                            blockLimit = "player";
-                            break;
-                    }
                     writer.Write(blockLimit);
                     writer.WritePropertyName("TotalPCU");
-                    writer.Write(MySession.Static.TotalPCU);
+                    writer.Write(totalPCU);
                     writer.WriteObjectEnd();
                     break;
                 case "/metrics/v1/session/grids":
