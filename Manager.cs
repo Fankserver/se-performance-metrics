@@ -34,10 +34,30 @@ namespace performance_metrics
         {
             base.Attach();
 
-            ws = new WebServer(SendHttpResponseResponse, "http://*:8080/");
-            ws.Run();
+            Torch.GameStateChanged += Torch_GameStateChanged;
 
             LogManager.GetCurrentClassLogger().Info("Attached");
+        }
+
+        private void Torch_GameStateChanged(MySandboxGame game, TorchGameState newState)
+        {
+            if (MySandboxGame.ConfigDedicated.RemoteApiEnabled)
+            {
+                LogManager.GetCurrentClassLogger().Error($"Remote API is enabled, can not start metric system");
+                return;
+            }
+
+            if (newState == TorchGameState.Creating)
+            {
+                LogManager.GetCurrentClassLogger().Info($"WebServer started on port {MySandboxGame.ConfigDedicated.RemoteApiPort}");
+                ws = new WebServer(SendHttpResponseResponse, $"http://*:{MySandboxGame.ConfigDedicated.RemoteApiPort}/");
+                ws.Run();
+            }
+            else if (newState == TorchGameState.Unloaded)
+            {
+                ws.Stop();
+                ws = null;
+            }
         }
 
         /// <inheritdoc cref="Manager.Detach"/>
@@ -45,7 +65,12 @@ namespace performance_metrics
         {
             base.Detach();
 
-            ws.Stop();
+            Torch.GameStateChanged -= Torch_GameStateChanged;
+            if (ws != null)
+            {
+                ws.Stop();
+                ws = null;
+            }
 
             LogManager.GetCurrentClassLogger().Info("Detached");
         }
