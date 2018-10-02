@@ -17,6 +17,7 @@ using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace performance_metrics
@@ -199,6 +200,54 @@ namespace performance_metrics
                             x_entitiesForSimulate = m_entitiesForSimulate.List.Select((x) => x.EntityId).ToList();
                         });
 
+                        bool IsConcealed(MyCubeGrid grid)
+                        {
+                            int NeedsUpdateMatches = 0;
+                            int RegistedMatches = 0;
+
+                            if ((grid.NeedsUpdate & MyEntityUpdateEnum.BEFORE_NEXT_FRAME) > MyEntityUpdateEnum.NONE) {
+                                NeedsUpdateMatches++;
+                                if (x_entitiesForUpdateOnce.Any((x) => x == grid.EntityId))
+                                {
+                                    RegistedMatches++;
+                                }
+                            }
+                            if ((grid.NeedsUpdate & MyEntityUpdateEnum.EACH_FRAME) > MyEntityUpdateEnum.NONE)
+                            {
+                                NeedsUpdateMatches++;
+                                if (x_entitiesForUpdate.Any((x) => x == grid.EntityId))
+                                {
+                                    RegistedMatches++;
+                                }
+                            }
+                            if ((grid.NeedsUpdate & MyEntityUpdateEnum.EACH_10TH_FRAME) > MyEntityUpdateEnum.NONE)
+                            {
+                                NeedsUpdateMatches++;
+                                if (x_entitiesForUpdate10.Any((x) => x == grid.EntityId))
+                                {
+                                    RegistedMatches++;
+                                }
+                            }
+                            if ((grid.NeedsUpdate & MyEntityUpdateEnum.EACH_100TH_FRAME) > MyEntityUpdateEnum.NONE)
+                            {
+                                NeedsUpdateMatches++;
+                                if (x_entitiesForUpdate100.Any((x) => x == grid.EntityId))
+                                {
+                                    RegistedMatches++;
+                                }
+                            }
+                            if ((grid.NeedsUpdate & MyEntityUpdateEnum.SIMULATE) > MyEntityUpdateEnum.NONE)
+                            {
+                                NeedsUpdateMatches++;
+                                if (x_entitiesForSimulate.Any((x) => x == grid.EntityId))
+                                {
+                                    RegistedMatches++;
+                                }
+                            }
+
+                            return NeedsUpdateMatches > 0 && RegistedMatches == 0;
+                        }
+
                         foreach (MyEntity item in entities)
                         {
                             MyCubeGrid myCubeGrid = item as MyCubeGrid;
@@ -263,8 +312,8 @@ namespace performance_metrics
                                 writer.Write(myCubeGrid.GridSystems.ResourceDistributor.ResourceStateByType(MyResourceDistributorComponent.ElectricityId, withRecompute: false) != MyResourceStateEnum.NoPower);
                                 writer.WritePropertyName("PCU");
                                 writer.Write(myCubeGrid.BlocksPCU);
-                                writer.WritePropertyName("Concealed");
-                                writer.Write(x_entitiesForUpdateOnce.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForUpdate.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForUpdate10.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForUpdate100.Any((x) => x == myCubeGrid.EntityId) || x_entitiesForSimulate.Any((x) => x == myCubeGrid.EntityId) ? false : true);
+                                writer.WritePropertyName("IsConcealed");
+                                writer.Write(IsConcealed(myCubeGrid));
                                 writer.WritePropertyName("DampenersEnabled");
                                 writer.Write(myCubeGrid.DampenersEnabled);
                                 writer.WritePropertyName("IsStatic");
