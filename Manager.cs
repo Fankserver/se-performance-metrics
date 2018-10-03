@@ -154,6 +154,29 @@ namespace performance_metrics
                     writer.Write(totalPCU);
                     writer.WriteObjectEnd();
                     break;
+                case "/metrics/v1/process":
+                    System.Diagnostics.Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+                    writer.WriteObjectStart();
+                    writer.WritePropertyName("PrivateMemorySize64");
+                    writer.Write(currentProcess.PrivateMemorySize64);
+                    writer.WritePropertyName("VirtualMemorySize64");
+                    writer.Write(currentProcess.VirtualMemorySize64);
+                    writer.WritePropertyName("WorkingSet64");
+                    writer.Write(currentProcess.WorkingSet64);
+                    writer.WritePropertyName("NonpagedSystemMemorySize64");
+                    writer.Write(currentProcess.NonpagedSystemMemorySize64);
+                    writer.WritePropertyName("PagedMemorySize64");
+                    writer.Write(currentProcess.PagedMemorySize64);
+                    writer.WritePropertyName("PagedSystemMemorySize64");
+                    writer.Write(currentProcess.PagedSystemMemorySize64);
+                    writer.WritePropertyName("PeakPagedMemorySize64");
+                    writer.Write(currentProcess.PeakPagedMemorySize64);
+                    writer.WritePropertyName("PeakVirtualMemorySize64");
+                    writer.Write(currentProcess.PeakVirtualMemorySize64);
+                    writer.WritePropertyName("PeakWorkingSet64");
+                    writer.Write(currentProcess.PeakWorkingSet64);
+                    writer.WriteObjectEnd();
+                    break;
                 case "/metrics/v1/session/grids":
                     writer.WriteArrayStart();
                     if (MySession.Static != null && MySession.Static.Ready)
