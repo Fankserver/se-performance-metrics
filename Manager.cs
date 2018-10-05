@@ -603,7 +603,7 @@ namespace performance_metrics
                 Type = "session",
                 Text = $"Player {obj.Name} joined",
                 Tags = new string[]{ "player", "joined" },
-                Occurred = DateTime.Now.ToUniversalTime(),
+                Occurred = DateTime.Now,
             });
         }
 
@@ -614,7 +614,7 @@ namespace performance_metrics
                 Type = "session",
                 Text = $"Player {obj.Name} left",
                 Tags = new string[] { "player", "left" },
-                Occurred = DateTime.Now.ToUniversalTime(),
+                Occurred = DateTime.Now,
             });
         }
 
@@ -632,7 +632,7 @@ namespace performance_metrics
                         Type = "process",
                         Text = $"Full GC Approach",
                         Tags = new string[] { "gc" },
-                        Occurred = DateTime.Now.ToUniversalTime(),
+                        Occurred = DateTime.Now,
                     });
                 }
                 else if (s == GCNotificationStatus.Canceled)
@@ -660,7 +660,7 @@ namespace performance_metrics
                         Type = "process",
                         Text = $"Full GC Complete",
                         Tags = new string[] { "gc" },
-                        Occurred = DateTime.Now.ToUniversalTime(),
+                        Occurred = DateTime.Now,
                     });
                 }
                 else if (status == GCNotificationStatus.Canceled)
