@@ -7,12 +7,17 @@ using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using Torch.API;
+using Torch.API.Managers;
+using Torch.API.Session;
 using Torch.Managers;
+using Torch.Session;
 using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Entity;
@@ -22,12 +27,25 @@ using VRageMath;
 
 namespace performance_metrics
 {
+    class Event
+    {
+        public string Type;
+        public string Text;
+        public string[] Tags;
+        public DateTime Occurred;
+    }
+
     class PerformanceMetricsManager : Manager
     {
         private WebServer ws;
+        private TorchSessionManager _sessionManager;
+        private static MyConcurrentDeque<Event> events = new MyConcurrentDeque<Event>();
 
         public PerformanceMetricsManager(ITorchBase torchInstance) : base(torchInstance)
         {
+            GC.RegisterForFullGCNotification(10, 10);
+            Thread thWaitForFullGC = new Thread(new ThreadStart(WaitForFullGCProc));
+            thWaitForFullGC.Start();
         }
 
         /// <inheritdoc cref="Manager.Attach"/>
@@ -36,29 +54,13 @@ namespace performance_metrics
             base.Attach();
 
             Torch.GameStateChanged += Torch_GameStateChanged;
+            _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
+            if (_sessionManager != null)
+                _sessionManager.SessionStateChanged += SessionChanged;
+            else
+                LogManager.GetCurrentClassLogger().Warn("No session manager. Player metrics won't work");
 
             LogManager.GetCurrentClassLogger().Info("Attached");
-        }
-
-        private void Torch_GameStateChanged(MySandboxGame game, TorchGameState newState)
-        {
-            if (MySandboxGame.ConfigDedicated.RemoteApiEnabled)
-            {
-                LogManager.GetCurrentClassLogger().Error($"Remote API is enabled, can not start metric system");
-                return;
-            }
-
-            if (newState == TorchGameState.Creating)
-            {
-                LogManager.GetCurrentClassLogger().Info($"WebServer started on port {MySandboxGame.ConfigDedicated.RemoteApiPort}");
-                ws = new WebServer(SendHttpResponseResponse, $"http://*:{MySandboxGame.ConfigDedicated.RemoteApiPort}/");
-                ws.Run();
-            }
-            else if (newState == TorchGameState.Unloaded)
-            {
-                ws.Stop();
-                ws = null;
-            }
         }
 
         /// <inheritdoc cref="Manager.Detach"/>
@@ -67,6 +69,9 @@ namespace performance_metrics
             base.Detach();
 
             Torch.GameStateChanged -= Torch_GameStateChanged;
+            if (_sessionManager != null)
+                _sessionManager.SessionStateChanged -= SessionChanged;
+            _sessionManager = null;
             if (ws != null)
             {
                 ws.Stop();
@@ -92,6 +97,7 @@ namespace performance_metrics
                     int maxBlocksPerPlayer = 0;
                     string blockLimit = "";
                     int totalPCU = 0;
+                    int modCount = 0;
                     if (MySession.Static != null) {
                         if (MySession.Static.GlobalBlockLimits != null)
                         {
@@ -103,6 +109,7 @@ namespace performance_metrics
                         maxGridSize = MySession.Static.MaxGridSize;
                         maxBlocksPerPlayer = MySession.Static.MaxBlocksPerPlayer;
                         totalPCU = MySession.Static.TotalPCU;
+                        modCount = MySession.Static.Mods.Count;
                         switch (MySession.Static.BlockLimitsEnabled)
                         {
                             case MyBlockLimitsEnabledEnum.GLOBALLY:
@@ -152,6 +159,8 @@ namespace performance_metrics
                     writer.Write(blockLimit);
                     writer.WritePropertyName("TotalPCU");
                     writer.Write(totalPCU);
+                    writer.WritePropertyName("ModCount");
+                    writer.Write(modCount);
                     writer.WriteObjectEnd();
                     break;
                 case "/metrics/v1/process":
@@ -176,6 +185,30 @@ namespace performance_metrics
                     writer.WritePropertyName("PeakWorkingSet64");
                     writer.Write(currentProcess.PeakWorkingSet64);
                     writer.WriteObjectEnd();
+                    break;
+                case "/metrics/v1/events":
+                    writer.WriteArrayStart();
+                    Event ev;
+                    while (!events.Empty)
+                    {
+                        if (events.TryDequeueBack(out ev))
+                        {
+                            writer.WriteObjectStart();
+                            writer.WritePropertyName("Text");
+                            writer.Write(ev.Text);
+                            writer.WritePropertyName("Tags");
+                            writer.WriteArrayStart();
+                            foreach (var tag in ev.Tags)
+                            {
+                                writer.Write(tag);
+                            }
+                            writer.WriteArrayEnd();
+                            writer.WritePropertyName("Occurred");
+                            writer.Write(ev.Occurred.ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz", DateTimeFormatInfo.InvariantInfo));
+                            writer.WriteObjectEnd();
+                        }
+                    }
+                    writer.WriteArrayEnd();
                     break;
                 case "/metrics/v1/session/grids":
                     writer.WriteArrayStart();
@@ -522,6 +555,126 @@ namespace performance_metrics
             }
 
             return sb.ToString();
+        }
+
+        private void Torch_GameStateChanged(MySandboxGame game, TorchGameState newState)
+        {
+            if (MySandboxGame.ConfigDedicated.RemoteApiEnabled)
+            {
+                LogManager.GetCurrentClassLogger().Error($"Remote API is enabled, disable it!");
+                return;
+            }
+
+            if (newState == TorchGameState.Creating)
+            {
+                LogManager.GetCurrentClassLogger().Info($"WebServer started on port {MySandboxGame.ConfigDedicated.RemoteApiPort}");
+                ws = new WebServer(SendHttpResponseResponse, $"http://*:{MySandboxGame.ConfigDedicated.RemoteApiPort}/");
+                ws.Run();
+            }
+            else if (newState == TorchGameState.Unloaded)
+            {
+                ws.Stop();
+                ws = null;
+            }
+        }
+
+        private void SessionChanged(ITorchSession session, TorchSessionState state)
+        {
+            var mpMan = Torch.CurrentSession.Managers.GetManager<IMultiplayerManagerServer>();
+            switch (state)
+            {
+                case TorchSessionState.Loaded:
+                    mpMan.PlayerJoined += PlayerJoined;
+                    mpMan.PlayerLeft += PlayerLeft;
+                    break;
+                case TorchSessionState.Unloading:
+                    mpMan.PlayerJoined -= PlayerJoined;
+                    mpMan.PlayerLeft -= PlayerLeft;
+                    break;
+            }
+        }
+
+        private void PlayerJoined(IPlayer obj)
+        {
+            events.EnqueueFront(new Event
+            {
+                Type = "session",
+                Text = $"Player {obj.Name} joined",
+                Tags = new string[]{ "player", "joined" },
+                Occurred = DateTime.Now.ToUniversalTime(),
+            });
+        }
+
+        private void PlayerLeft(IPlayer obj)
+        {
+            events.EnqueueFront(new Event
+            {
+                Type = "session",
+                Text = $"Player {obj.Name} left",
+                Tags = new string[] { "player", "left" },
+                Occurred = DateTime.Now.ToUniversalTime(),
+            });
+        }
+
+        public static void WaitForFullGCProc()
+        {
+            while (true)
+            {
+                // Check for a notification of an approaching collection.
+                GCNotificationStatus s = GC.WaitForFullGCApproach();
+                if (s == GCNotificationStatus.Succeeded)
+                {
+                    //Console.WriteLine("GC Notification raised.");
+                    events.EnqueueFront(new Event
+                    {
+                        Type = "process",
+                        Text = $"Full GC Approach",
+                        Tags = new string[] { "gc" },
+                        Occurred = DateTime.Now.ToUniversalTime(),
+                    });
+                }
+                else if (s == GCNotificationStatus.Canceled)
+                {
+                    //Console.WriteLine("GC Notification cancelled.");
+                    break;
+                }
+                else
+                {
+                    // This can occur if a timeout period
+                    // is specified for WaitForFullGCApproach(Timeout) 
+                    // or WaitForFullGCComplete(Timeout)  
+                    // and the time out period has elapsed. 
+                    //Console.WriteLine("GC Notification not applicable.");
+                    break;
+                }
+
+                // Check for a notification of a completed collection.
+                GCNotificationStatus status = GC.WaitForFullGCComplete();
+                if (status == GCNotificationStatus.Succeeded)
+                {
+                    //Console.WriteLine("GC Notification raised.");
+                    events.EnqueueFront(new Event
+                    {
+                        Type = "process",
+                        Text = $"Full GC Complete",
+                        Tags = new string[] { "gc" },
+                        Occurred = DateTime.Now.ToUniversalTime(),
+                    });
+                }
+                else if (status == GCNotificationStatus.Canceled)
+                {
+                    //Console.WriteLine("GC Notification cancelled.");
+                    break;
+                }
+                else
+                {
+                    // Could be a time out.
+                    //Console.WriteLine("GC Notification not applicable.");
+                    break;
+                }
+
+                Thread.Sleep(500);
+            }
         }
     }
 }
