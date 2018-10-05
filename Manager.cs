@@ -194,6 +194,8 @@ namespace performance_metrics
                         if (events.TryDequeueBack(out ev))
                         {
                             writer.WriteObjectStart();
+                            writer.WritePropertyName("Type");
+                            writer.Write(ev.Type);
                             writer.WritePropertyName("Text");
                             writer.Write(ev.Text);
                             writer.WritePropertyName("Tags");
