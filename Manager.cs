@@ -208,8 +208,8 @@ namespace performance_metrics
                                 writer.Write(tag);
                             }
                             writer.WriteArrayEnd();
-                            writer.WritePropertyName("Occurred");
-                            writer.Write(ev.Occurred.ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz", DateTimeFormatInfo.InvariantInfo));
+                            writer.WritePropertyName("SecondsInThePast");
+                            writer.Write((DateTime.Now - ev.Occurred).Seconds);
                             writer.WriteObjectEnd();
                         }
                     }
