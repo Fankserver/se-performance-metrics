@@ -1,6 +1,7 @@
 ﻿using LitJson;
 using NLog;
 using Sandbox;
+using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.Game.Multiplayer;
@@ -434,6 +435,7 @@ namespace performance_metrics
                                 float value4 = 0f;
                                 float value5 = 0f;
                                 float value6 = 0f;
+                                string value7 = string.Empty;
                                 if (myFloatingObject != null)
                                 {
                                     if (myFloatingObject.Closed || myFloatingObject.Physics == null)
@@ -446,6 +448,8 @@ namespace performance_metrics
                                     value4 = myFloatingObject.Physics.Mass;
                                     value5 = myFloatingObject.Physics.LinearVelocity.Length();
                                     value6 = MySession.GetPlayerDistance(myFloatingObject, onlinePlayers);
+                                    var def = MyDefinitionManager.Static.GetPhysicalItemDefinition(new MyDefinitionId(myFloatingObject.Item.Content.TypeId, myFloatingObject.Item.Content.SubtypeId));
+                                    value7 = def.DisplayNameText;
                                 }
                                 else if (myInventoryBagEntity != null)
                                 {
@@ -459,6 +463,7 @@ namespace performance_metrics
                                     value4 = myInventoryBagEntity.Physics.Mass;
                                     value5 = myInventoryBagEntity.Physics.LinearVelocity.Length();
                                     value6 = MySession.GetPlayerDistance(myInventoryBagEntity, onlinePlayers);
+                                    value7 = "Bag";
                                 }
                                 writer.WriteObjectStart();
                                 writer.WritePropertyName("DisplayName");
@@ -473,6 +478,8 @@ namespace performance_metrics
                                 writer.Write(value5);
                                 writer.WritePropertyName("DistanceToPlayer");
                                 writer.Write(value6);
+                                writer.WritePropertyName("TypeDisplayName");
+                                writer.Write(value7);
                                 writer.WriteObjectEnd();
                             }
                         }
