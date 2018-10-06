@@ -344,16 +344,6 @@ namespace performance_metrics
                                 writer.Write(myCubeGrid.BlocksCount);
                                 writer.WritePropertyName("Mass");
                                 writer.Write(myCubeGrid.Physics.Mass);
-                                writer.WritePropertyName("Position");
-                                Vector3D position = myCubeGrid.PositionComp.GetPosition();
-                                writer.WriteObjectStart();
-                                writer.WritePropertyName("X");
-                                writer.Write(position.X);
-                                writer.WritePropertyName("Y");
-                                writer.Write(position.Y);
-                                writer.WritePropertyName("Z");
-                                writer.Write(position.Z);
-                                writer.WriteObjectEnd();
                                 writer.WritePropertyName("LinearSpeed");
                                 writer.Write(myCubeGrid.Physics.LinearVelocity.Length());
                                 writer.WritePropertyName("DistanceToPlayer");
@@ -397,16 +387,6 @@ namespace performance_metrics
                                 writer.Write(myVoxelBase.StorageName);
                                 writer.WritePropertyName("EntityId");
                                 writer.Write(myVoxelBase.EntityId);
-                                Vector3D position = myVoxelBase.PositionComp.GetPosition();
-                                writer.WritePropertyName("Position");
-                                writer.WriteObjectStart();
-                                writer.WritePropertyName("X");
-                                writer.Write(position.X);
-                                writer.WritePropertyName("Y");
-                                writer.Write(position.Y);
-                                writer.WritePropertyName("Z");
-                                writer.Write(position.Z);
-                                writer.WriteObjectEnd();
                                 writer.WriteObjectEnd();
                             }
                         }
@@ -430,16 +410,6 @@ namespace performance_metrics
                                 writer.Write(storageName);
                                 writer.WritePropertyName("EntityId");
                                 writer.Write(entityId);
-                                Vector3D position = myPlanet.PositionComp.GetPosition();
-                                writer.WritePropertyName("Position");
-                                writer.WriteObjectStart();
-                                writer.WritePropertyName("X");
-                                writer.Write(position.X);
-                                writer.WritePropertyName("Y");
-                                writer.Write(position.Y);
-                                writer.WritePropertyName("Z");
-                                writer.Write(position.Z);
-                                writer.WriteObjectEnd();
                                 writer.WriteObjectEnd();
                             }
                         }
@@ -462,7 +432,6 @@ namespace performance_metrics
                                 long value2 = 0L;
                                 string value3 = string.Empty;
                                 float value4 = 0f;
-                                Vector3D vector3D = Vector3D.Zero;
                                 float value5 = 0f;
                                 float value6 = 0f;
                                 if (myFloatingObject != null)
@@ -475,7 +444,6 @@ namespace performance_metrics
                                     value2 = myFloatingObject.EntityId;
                                     value3 = "FloatingObject";
                                     value4 = myFloatingObject.Physics.Mass;
-                                    vector3D = myFloatingObject.PositionComp.GetPosition();
                                     value5 = myFloatingObject.Physics.LinearVelocity.Length();
                                     value6 = MySession.GetPlayerDistance(myFloatingObject, onlinePlayers);
                                 }
@@ -489,7 +457,6 @@ namespace performance_metrics
                                     value2 = myInventoryBagEntity.EntityId;
                                     value3 = "Bag";
                                     value4 = myInventoryBagEntity.Physics.Mass;
-                                    vector3D = myInventoryBagEntity.PositionComp.GetPosition();
                                     value5 = myInventoryBagEntity.Physics.LinearVelocity.Length();
                                     value6 = MySession.GetPlayerDistance(myInventoryBagEntity, onlinePlayers);
                                 }
@@ -502,15 +469,6 @@ namespace performance_metrics
                                 writer.Write(value3);
                                 writer.WritePropertyName("Mass");
                                 writer.Write(value4);
-                                writer.WritePropertyName("Position");
-                                writer.WriteObjectStart();
-                                writer.WritePropertyName("X");
-                                writer.Write(vector3D.X);
-                                writer.WritePropertyName("Y");
-                                writer.Write(vector3D.Y);
-                                writer.WritePropertyName("Z");
-                                writer.Write(vector3D.Z);
-                                writer.WriteObjectEnd();
                                 writer.WritePropertyName("LinearSpeed");
                                 writer.Write(value5);
                                 writer.WritePropertyName("DistanceToPlayer");
