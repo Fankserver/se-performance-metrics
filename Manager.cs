@@ -187,6 +187,8 @@ namespace performance_metrics
                     writer.Write(currentProcess.PeakWorkingSet64);
                     writer.WritePropertyName("GCLatencyMode");
                     writer.Write((int)System.Runtime.GCSettings.LatencyMode);
+                    writer.WritePropertyName("GCIsServerGC");
+                    writer.Write(System.Runtime.GCSettings.IsServerGC);
                     writer.WriteObjectEnd();
                     break;
                 case "/metrics/v1/events":
