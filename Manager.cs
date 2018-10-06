@@ -552,6 +552,11 @@ namespace performance_metrics
                 GC.Collect(0);
                 System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
             }
+            else if (newState == TorchGameState.Unloading)
+            {
+                GC.Collect(0);
+                System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.Interactive;
+            }
         }
 
         private void SessionChanged(ITorchSession session, TorchSessionState state)
