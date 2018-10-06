@@ -43,7 +43,7 @@ namespace performance_metrics
 
         public PerformanceMetricsManager(ITorchBase torchInstance) : base(torchInstance)
         {
-            GC.RegisterForFullGCNotification(10, 10);
+            GC.RegisterForFullGCNotification(1, 1);
             Thread thWaitForFullGC = new Thread(new ThreadStart(WaitForFullGCProc));
             thWaitForFullGC.Start();
         }
