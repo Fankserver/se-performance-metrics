@@ -189,7 +189,7 @@ namespace performance_metrics
                     writer.Write((int)System.Runtime.GCSettings.LatencyMode);
                     writer.WritePropertyName("GCIsServerGC");
                     writer.Write(System.Runtime.GCSettings.IsServerGC);
-                    writer.WritePropertyName("GCGetTotalMemory");
+                    writer.WritePropertyName("GCTotalMemory");
                     writer.Write(GC.GetTotalMemory(false));
                     writer.WritePropertyName("GCMaxGeneration");
                     writer.Write(GC.MaxGeneration);
