@@ -2,5 +2,5 @@
 <PluginManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Name>PerformanceMetrics</Name>
   <Guid>b55e4e8a-5fa0-45be-997b-5a1be33bba76</Guid>
-  <Version>v1.1.6.0</Version>
+  <Version>v1.2.0.0</Version>
 </PluginManifest>

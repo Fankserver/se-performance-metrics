@@ -14,6 +14,7 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using Torch;
 using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Session;
@@ -41,12 +42,17 @@ namespace performance_metrics
         private WebServer ws;
         private TorchSessionManager _sessionManager;
         private static MyConcurrentDeque<Event> events = new MyConcurrentDeque<Event>();
+        private Persistent<Config> _config;
 
-        public PerformanceMetricsManager(ITorchBase torchInstance) : base(torchInstance)
+        public PerformanceMetricsManager(ITorchBase torchInstance, Persistent<Config> config) : base(torchInstance)
         {
+            _config = config;
             GC.RegisterForFullGCNotification(99, 99);
             Thread thWaitForFullGC = new Thread(new ThreadStart(WaitForFullGCProc));
             thWaitForFullGC.Start();
+
+            var pluginManager = Torch.Managers.GetManager<PluginManager>();
+            pluginManager.PluginsLoaded += PluginsLoaded;
         }
 
         /// <inheritdoc cref="Manager.Attach"/>
@@ -559,6 +565,41 @@ namespace performance_metrics
             }
             else if (newState == TorchGameState.Loaded)
             {
+                List<ulong> modIds = MySession.Static.Mods.Select((x) => x.PublishedFileId).ToList();
+                List<ulong> modAddedIds = modIds.Except(_config.Data.LastModIds).ToList();
+                List<ulong> modRemovedIds = _config.Data.LastModIds.Except(modIds).ToList();
+
+                if (modAddedIds.Count > 0 || modRemovedIds.Count > 0)
+                {
+                    List<string> tags = new List<string>();
+                    tags.Add("mods");
+                    if (modAddedIds.Count > 0)
+                        tags.Add("added");
+                    if (modRemovedIds.Count > 0)
+                        tags.Add("removed");
+
+                    List<string> text = new List<string>();
+                    foreach (ulong modId in modAddedIds)
+                    {
+                        text.Add($"Added {modId} ({MySession.Static.Mods.Find((x) => x.PublishedFileId == modId).Name})");
+                    }
+                    foreach (ulong modId in modRemovedIds)
+                    {
+                        text.Add($"Removed {modId} ({MySession.Static.Mods.Find((x) => x.PublishedFileId == modId).Name})");
+                    }
+
+                    events.EnqueueFront(new Event
+                    {
+                        Type = "config",
+                        Text = string.Join("\n", text),
+                        Tags = tags.ToArray(),
+                        Occurred = DateTime.Now,
+                    });
+
+                    _config.Data.LastModIds = modIds;
+                    _config.Save();
+                }
+
                 GC.Collect(0);
                 System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
             }
@@ -605,6 +646,72 @@ namespace performance_metrics
                 Tags = new string[] { "player", "left" },
                 Occurred = DateTime.Now,
             });
+        }
+
+        private void PluginsLoaded(IReadOnlyCollection<Torch.API.Plugins.ITorchPlugin> obj)
+        {
+            var currentIds = obj.Select((x) => x.Id);
+            var lastIds = _config.Data.LastPlugins.Select((x) => x.Key);
+
+            List<string> text = new List<string>();
+            List<string> tags = new List<string>();
+            tags.Add("plugins");
+
+            var added = currentIds.Except(lastIds).ToList();
+            if (added.Count > 0)
+                tags.Add("added");
+
+            foreach (Guid id in added)
+            {
+                var plugin = obj.Where((x) => x.Id == id).First();
+                text.Add($"Added {plugin.Name} ({plugin.Version})");
+            }
+
+            var removed = lastIds.Except(currentIds).ToList();
+            if (removed.Count > 0)
+                tags.Add("removed");
+
+            foreach (Guid id in removed)
+            {
+                var plugin = _config.Data.LastPlugins.Find((x) => x.Key == id).Value;
+                text.Add($"Removed {plugin.Name} ({plugin.Version})");
+            }
+
+            bool changes = false;
+            foreach (Guid id in currentIds.Intersect(lastIds))
+            {
+                var currentPlugin = obj.Where((x) => x.Id == id).First();
+                var oldPlugin = _config.Data.LastPlugins.Find((x) => x.Key == id).Value;
+                if (currentPlugin.Version != oldPlugin.Version)
+                {
+                    changes = true;
+                    text.Add($"Changed {currentPlugin.Name} ({oldPlugin.Version}) -> ({currentPlugin.Version})");
+                }
+            }
+            if (changes)
+                tags.Add("changes");
+
+            if (tags.Count > 1)
+            {
+                events.EnqueueFront(new Event
+                {
+                    Type = "config",
+                    Text = string.Join("\n", text),
+                    Tags = tags.ToArray(),
+                    Occurred = DateTime.Now,
+                });
+
+                _config.Data.LastPlugins = obj.Select((x) => new SerializeableKeyValue<Guid, ConfigPlugin>
+                {
+                    Key = x.Id,
+                    Value = new ConfigPlugin
+                    {
+                        Name = x.Name,
+                        Version = x.Version,
+                    },
+                }).ToList();
+                _config.Save();
+            }
         }
 
         public static void WaitForFullGCProc()

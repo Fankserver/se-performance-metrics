@@ -163,6 +163,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlockWatcher.cs" />
+    <Compile Include="Config.cs" />
     <Compile Include="HttpServer.cs" />
     <Compile Include="Manager.cs" />
     <Compile Include="Plugin.cs" />
