@@ -189,6 +189,16 @@ namespace performance_metrics
                     writer.Write((int)System.Runtime.GCSettings.LatencyMode);
                     writer.WritePropertyName("GCIsServerGC");
                     writer.Write(System.Runtime.GCSettings.IsServerGC);
+                    writer.WritePropertyName("GCGetTotalMemory");
+                    writer.Write(GC.GetTotalMemory(false));
+                    writer.WritePropertyName("GCMaxGeneration");
+                    writer.Write(GC.MaxGeneration);
+                    writer.WritePropertyName("GCCollectionCount0");
+                    writer.Write(GC.CollectionCount(0));
+                    writer.WritePropertyName("GCCollectionCount1");
+                    writer.Write(GC.CollectionCount(1));
+                    writer.WritePropertyName("GCCollectionCount2");
+                    writer.Write(GC.CollectionCount(2));
                     writer.WriteObjectEnd();
                     break;
                 case "/metrics/v1/events":
