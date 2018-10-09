@@ -5,9 +5,11 @@ using Sandbox.Definitions;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.Game.Multiplayer;
+using Sandbox.Game.Screens.Helpers;
 using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Net;
@@ -19,11 +21,13 @@ using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Session;
 using Torch.Managers;
+using Torch.Managers.PatchManager;
 using Torch.Session;
 using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
+using VRage.Library.Utils;
 using VRage.ModAPI;
 using VRageMath;
 
@@ -37,12 +41,28 @@ namespace performance_metrics
         public DateTime Occurred;
     }
 
+    class LoadEvent
+    {
+        public float ServerThreadLoadSmooth;
+        public float ServerThreadLoad;
+        public float ServerCPULoadSmooth;
+        public float ServerCPULoad;
+        public float ServerSimulationRatio;
+        public DateTime Occurred;
+    }
+
     class PerformanceMetricsManager : Manager
     {
         private WebServer ws;
         private TorchSessionManager _sessionManager;
-        private static MyConcurrentDeque<Event> events = new MyConcurrentDeque<Event>();
         private Persistent<Config> _config;
+        private System.Timers.Timer loadTimer;
+        [Dependency] private readonly PatchManager _patchManager;
+        private PatchContext _ctx;
+        private static MyConcurrentDeque<Event> events = new MyConcurrentDeque<Event>();
+        private static MyConcurrentDeque<LoadEvent> loadEvents = new MyConcurrentDeque<LoadEvent>();
+        private static Stopwatch saveStopwatch = new Stopwatch();
+        private static long saveDuration = 0;
 
         public PerformanceMetricsManager(ITorchBase torchInstance, Persistent<Config> config) : base(torchInstance)
         {
@@ -60,12 +80,26 @@ namespace performance_metrics
         {
             base.Attach();
 
+            if (_ctx == null)
+                _ctx = _patchManager.AcquireContext();
+
             Torch.GameStateChanged += Torch_GameStateChanged;
             _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
             if (_sessionManager != null)
                 _sessionManager.SessionStateChanged += SessionChanged;
             else
                 LogManager.GetCurrentClassLogger().Warn("No session manager. Player metrics won't work");
+
+            loadTimer = new System.Timers.Timer(500);
+            loadTimer.Elapsed += LoadTimerElapsed;
+            loadTimer.AutoReset = true;
+            loadTimer.Start();
+
+            var asyncSaving = typeof(MyAsyncSaving);
+            var perfMetricManager = typeof(PerformanceMetricsManager);
+            _ctx.GetPattern(asyncSaving.GetMethod(nameof(MyAsyncSaving.Start), BindingFlags.Static | BindingFlags.Public)).Prefixes.Add(perfMetricManager.GetMethod(nameof(PrefixAsyncSavingStart), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
+            _ctx.GetPattern(asyncSaving.GetMethod(nameof(MyAsyncSaving.Start), BindingFlags.Static | BindingFlags.Public)).Suffixes.Add(perfMetricManager.GetMethod(nameof(SuffixAsyncSavingStart), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
+            _patchManager.Commit();
 
             LogManager.GetCurrentClassLogger().Info("Attached");
         }
@@ -74,6 +108,9 @@ namespace performance_metrics
         public override void Detach()
         {
             base.Detach();
+
+            loadTimer.Stop();
+            loadTimer.Dispose();
 
             Torch.GameStateChanged -= Torch_GameStateChanged;
             if (_sessionManager != null)
@@ -85,6 +122,8 @@ namespace performance_metrics
                 ws = null;
             }
 
+            _patchManager.FreeContext(_ctx);
+
             LogManager.GetCurrentClassLogger().Info("Detached");
         }
 
@@ -95,6 +134,15 @@ namespace performance_metrics
 
             switch (request.Url.AbsolutePath)
             {
+                //case "/gc/collect/0":
+                //    GC.Collect(0);
+                //    break;
+                //case "/gc/collect/1":
+                //    GC.Collect(1);
+                //    break;
+                //case "/gc/collect/2":
+                //    GC.Collect(2);
+                //    break;
                 case "/metrics/v1/server":
                     int usedPCU = 0;
                     int maxPlayers = 0;
@@ -168,7 +216,34 @@ namespace performance_metrics
                     writer.Write(totalPCU);
                     writer.WritePropertyName("ModCount");
                     writer.Write(modCount);
+                    writer.WritePropertyName("SaveDuration");
+                    writer.Write(saveDuration);
                     writer.WriteObjectEnd();
+                    break;
+                case "/metrics/v1/load":
+                    writer.WriteArrayStart();
+                    LoadEvent loadEv;
+                    while (!loadEvents.Empty)
+                    {
+                        if (loadEvents.TryDequeueBack(out loadEv))
+                        {
+                            writer.WriteObjectStart();
+                            writer.WritePropertyName("ServerCPULoad");
+                            writer.Write(loadEv.ServerCPULoad);
+                            writer.WritePropertyName("ServerCPULoadSmooth");
+                            writer.Write(loadEv.ServerCPULoadSmooth);
+                            writer.WritePropertyName("ServerSimulationRatio");
+                            writer.Write(loadEv.ServerSimulationRatio);
+                            writer.WritePropertyName("ServerThreadLoad");
+                            writer.Write(loadEv.ServerThreadLoad);
+                            writer.WritePropertyName("ServerThreadLoadSmooth");
+                            writer.Write(loadEv.ServerThreadLoadSmooth);
+                            writer.WritePropertyName("MillisecondsInThePast");
+                            writer.Write((DateTime.Now - loadEv.Occurred).Milliseconds);
+                            writer.WriteObjectEnd();
+                        }
+                    }
+                    writer.WriteArrayEnd();
                     break;
                 case "/metrics/v1/process":
                     System.Diagnostics.Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
@@ -714,6 +789,19 @@ namespace performance_metrics
             }
         }
 
+        private void LoadTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            loadEvents.EnqueueFront(new LoadEvent
+            {
+                ServerCPULoad = Sync.ServerCPULoad,
+                ServerCPULoadSmooth = Sync.ServerCPULoadSmooth,
+                ServerSimulationRatio = Sync.ServerSimulationRatio,
+                ServerThreadLoad = Sync.ServerThreadLoad,
+                ServerThreadLoadSmooth = Sync.ServerThreadLoadSmooth,
+                Occurred = DateTime.Now,
+            });
+        }
+
         public static void WaitForFullGCProc()
         {
             while (true)
@@ -773,6 +861,25 @@ namespace performance_metrics
 
                 Thread.Sleep(500);
             }
+        }
+
+        public static void PrefixAsyncSavingStart(Action callbackOnFinished = null, string customName = null, bool wait = false)
+        {
+            events.EnqueueFront(new Event
+            {
+                Type = "process",
+                Text = $"Save started",
+                Tags = new string[] { "save" },
+                Occurred = DateTime.Now,
+            });
+            saveStopwatch.Start();
+        }
+
+        public static void SuffixAsyncSavingStart(Action callbackOnFinished = null, string customName = null, bool wait = false)
+        {
+            saveStopwatch.Stop();
+            saveDuration += saveStopwatch.ElapsedMilliseconds;
+            saveStopwatch.Reset();
         }
     }
 }
