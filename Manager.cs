@@ -239,7 +239,7 @@ namespace performance_metrics
                             writer.WritePropertyName("ServerThreadLoadSmooth");
                             writer.Write(loadEv.ServerThreadLoadSmooth);
                             writer.WritePropertyName("MillisecondsInThePast");
-                            writer.Write((DateTime.Now - loadEv.Occurred).Milliseconds);
+                            writer.Write((DateTime.Now - loadEv.Occurred).TotalMilliseconds);
                             writer.WriteObjectEnd();
                         }
                     }
@@ -302,7 +302,7 @@ namespace performance_metrics
                             }
                             writer.WriteArrayEnd();
                             writer.WritePropertyName("SecondsInThePast");
-                            writer.Write((DateTime.Now - ev.Occurred).Seconds);
+                            writer.Write((DateTime.Now - ev.Occurred).TotalSeconds);
                             writer.WriteObjectEnd();
                         }
                     }
