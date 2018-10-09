@@ -714,6 +714,7 @@ namespace performance_metrics
 
         private void PlayerLeft(IPlayer obj)
         {
+            if (obj.Name.StartsWith("ID:")) return;
             events.EnqueueFront(new Event
             {
                 Type = "session",
