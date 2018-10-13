@@ -325,25 +325,21 @@ namespace performance_metrics
                         CachingList<MyEntity> m_entitiesForUpdateOnce = value as CachingList<MyEntity>;
                         List<long> x_entitiesForUpdateOnce = new List<long>();
 
-                        type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity> m_entitiesForUpdate = value as MyDistributedUpdater<ConcurrentCachingList<MyEntity>, MyEntity>;
                         List<long> x_entitiesForUpdate = new List<long>();
 
-                        type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate10", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate10 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
                         List<long> x_entitiesForUpdate10 = new List<long>();
 
-                        type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForUpdate100", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForUpdate100 = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
                         List<long> x_entitiesForUpdate100 = new List<long>();
 
-                        type = typeof(MyEntities);
                         info = type.GetField("m_entitiesForSimulate", BindingFlags.NonPublic | BindingFlags.Static);
                         value = info.GetValue(null);
                         MyDistributedUpdater<CachingList<MyEntity>, MyEntity> m_entitiesForSimulate = value as MyDistributedUpdater<CachingList<MyEntity>, MyEntity>;
@@ -452,22 +448,18 @@ namespace performance_metrics
                                         break;
                                 }
 
-                                type = myCubeGrid.GridSystems.ConveyorSystem.GetType();
-                                info = type.GetField("m_inventoryBlocks", BindingFlags.NonPublic);
-                                value = info.GetValue(null);
-                                HashSet<MyCubeBlock> m_inventoryBlocks = value as HashSet<MyCubeBlock>;
-
-                                info = type.GetField("m_conveyorEndpointBlocks", BindingFlags.NonPublic);
-                                value = info.GetValue(null);
-                                HashSet<IMyConveyorEndpointBlock> m_conveyorEndpointBlocks = value as HashSet<IMyConveyorEndpointBlock>;
-
-                                info = type.GetField("m_lines", BindingFlags.NonPublic);
-                                value = info.GetValue(null);
-                                HashSet<MyConveyorLine> m_lines = value as HashSet<MyConveyorLine>;
-
-                                info = type.GetField("m_connectors", BindingFlags.NonPublic);
-                                value = info.GetValue(null);
-                                HashSet<MyShipConnector> m_connectors = value as HashSet<MyShipConnector>;
+                                int conveyorInventoryBlockCount = 0;
+                                int conveyorEndpointBlockCount = 0;
+                                int conveyorLineCount = 0;
+                                int conveyorConnectorCount = 0;
+                                if (myCubeGrid?.GridSystems?.ConveyorSystem != null)
+                                {
+                                    type = myCubeGrid.GridSystems.ConveyorSystem.GetType();
+                                    conveyorInventoryBlockCount = (type.GetField("m_inventoryBlocks", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(myCubeGrid.GridSystems.ConveyorSystem) as HashSet<MyCubeBlock>).Count;
+                                    conveyorEndpointBlockCount = (type.GetField("m_conveyorEndpointBlocks", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(myCubeGrid.GridSystems.ConveyorSystem) as HashSet<IMyConveyorEndpointBlock>).Count;
+                                    conveyorLineCount = (type.GetField("m_lines", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(myCubeGrid.GridSystems.ConveyorSystem) as HashSet<MyConveyorLine>).Count;
+                                    conveyorConnectorCount = (type.GetField("m_connectors", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(myCubeGrid.GridSystems.ConveyorSystem) as HashSet<MyShipConnector>).Count;
+                                }
 
                                 writer.WriteObjectStart();
                                 writer.WritePropertyName("DisplayName");
@@ -505,13 +497,13 @@ namespace performance_metrics
                                 writer.WritePropertyName("IsStatic");
                                 writer.Write(myCubeGrid.Physics.IsStatic);
                                 writer.WritePropertyName("ConveyorSystemInventoryBlockCount");
-                                writer.Write(m_inventoryBlocks.Count);
+                                writer.Write(conveyorInventoryBlockCount);
                                 writer.WritePropertyName("ConveyorSystemEndpointBlockCount");
-                                writer.Write(m_lines.Count);
+                                writer.Write(conveyorEndpointBlockCount);
                                 writer.WritePropertyName("ConveyorSystemLineCount");
-                                writer.Write(m_lines.Count);
+                                writer.Write(conveyorLineCount);
                                 writer.WritePropertyName("ConveyorSystemConnectorCount");
-                                writer.Write(m_connectors.Count);
+                                writer.Write(conveyorConnectorCount);
                                 writer.WriteObjectEnd();
                             }
                         }
