@@ -3,7 +3,10 @@ using NLog;
 using Sandbox;
 using Sandbox.Definitions;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.EntityComponents;
+using Sandbox.Game.GameSystems;
+using Sandbox.Game.GameSystems.Conveyors;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.Screens.Helpers;
 using Sandbox.Game.World;
@@ -29,6 +32,7 @@ using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Library.Utils;
 using VRage.ModAPI;
+using VRage.Stats;
 using VRageMath;
 
 namespace performance_metrics
@@ -448,6 +452,23 @@ namespace performance_metrics
                                         break;
                                 }
 
+                                type = myCubeGrid.GridSystems.ConveyorSystem.GetType();
+                                info = type.GetField("m_inventoryBlocks", BindingFlags.NonPublic);
+                                value = info.GetValue(null);
+                                HashSet<MyCubeBlock> m_inventoryBlocks = value as HashSet<MyCubeBlock>;
+
+                                info = type.GetField("m_conveyorEndpointBlocks", BindingFlags.NonPublic);
+                                value = info.GetValue(null);
+                                HashSet<IMyConveyorEndpointBlock> m_conveyorEndpointBlocks = value as HashSet<IMyConveyorEndpointBlock>;
+
+                                info = type.GetField("m_lines", BindingFlags.NonPublic);
+                                value = info.GetValue(null);
+                                HashSet<MyConveyorLine> m_lines = value as HashSet<MyConveyorLine>;
+
+                                info = type.GetField("m_connectors", BindingFlags.NonPublic);
+                                value = info.GetValue(null);
+                                HashSet<MyShipConnector> m_connectors = value as HashSet<MyShipConnector>;
+
                                 writer.WriteObjectStart();
                                 writer.WritePropertyName("DisplayName");
                                 writer.Write(myCubeGrid.DisplayName);
@@ -483,6 +504,14 @@ namespace performance_metrics
                                 writer.Write(myCubeGrid.DampenersEnabled);
                                 writer.WritePropertyName("IsStatic");
                                 writer.Write(myCubeGrid.Physics.IsStatic);
+                                writer.WritePropertyName("ConveyorSystemInventoryBlockCount");
+                                writer.Write(m_inventoryBlocks.Count);
+                                writer.WritePropertyName("ConveyorSystemEndpointBlockCount");
+                                writer.Write(m_lines.Count);
+                                writer.WritePropertyName("ConveyorSystemLineCount");
+                                writer.Write(m_lines.Count);
+                                writer.WritePropertyName("ConveyorSystemConnectorCount");
+                                writer.Write(m_connectors.Count);
                                 writer.WriteObjectEnd();
                             }
                         }
