@@ -411,6 +411,7 @@ namespace performance_metrics
                                 string displayName = string.Empty;
                                 string factionTag = string.Empty;
                                 string factionName = string.Empty;
+                                long groupEntityId = 0L;
                                 if (myCubeGrid.BigOwners.Count > 0)
                                 {
                                     steamId = myCubeGrid.BigOwners[0];
@@ -429,11 +430,31 @@ namespace performance_metrics
                                     }
                                 }
 
+                                foreach (var group in MyCubeGridGroups.Static.Physical.Groups)
+                                {
+                                    bool found = false;
+
+                                    foreach (var node in group.Nodes)
+                                    {
+                                        if (node.NodeData != myCubeGrid)
+                                            continue;
+
+                                        groupEntityId = group.Nodes.OrderByDescending(x => x.NodeData.BlocksCount).First().NodeData.EntityId;
+                                        found = true;
+                                        break;
+                                    }
+
+                                    if (found)
+                                        break;
+                                }
+
                                 writer.WriteObjectStart();
                                 writer.WritePropertyName("DisplayName");
                                 writer.Write(myCubeGrid.DisplayName);
                                 writer.WritePropertyName("EntityId");
                                 writer.Write(myCubeGrid.EntityId);
+                                writer.WritePropertyName("PhysicsGroupEntityId");
+                                writer.Write(groupEntityId);
                                 writer.WritePropertyName("GridSize");
                                 writer.Write(myCubeGrid.GridSizeEnum == MyCubeSize.Large ? "Large" : "Small");
                                 writer.WritePropertyName("BlocksCount");
