@@ -2,6 +2,7 @@
 using NLog;
 using Sandbox;
 using Sandbox.Definitions;
+using Sandbox.Engine.Multiplayer;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.EntityComponents;
@@ -10,7 +11,9 @@ using Sandbox.Game.GameSystems.Conveyors;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.Screens.Helpers;
 using Sandbox.Game.World;
+using SpaceEngineers.Game.World;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -55,6 +58,13 @@ namespace performance_metrics
         public DateTime Occurred;
     }
 
+    class PlayerEvent
+    {
+        public string Type;
+        public ulong SteamId;
+        public DateTime Occurred;
+    }
+
     class PerformanceMetricsManager : Manager
     {
         private WebServer ws;
@@ -65,8 +75,21 @@ namespace performance_metrics
         private PatchContext _ctx;
         private static MyConcurrentDeque<Event> events = new MyConcurrentDeque<Event>();
         private static MyConcurrentDeque<LoadEvent> loadEvents = new MyConcurrentDeque<LoadEvent>();
+        private static MyConcurrentDeque<PlayerEvent> playerEvents = new MyConcurrentDeque<PlayerEvent>();
         private static Stopwatch saveStopwatch = new Stopwatch();
         private static long saveDuration = 0;
+
+        private static readonly MethodInfo _asyncSavingStart =
+            typeof(MyAsyncSaving).GetMethod(nameof(MyAsyncSaving.Start), BindingFlags.Static | BindingFlags.Public) ??
+            throw new Exception("Failed to find patch method");
+
+        private static readonly MethodInfo _serverBanClient =
+            typeof(MyDedicatedServerBase).GetMethod(nameof(MyDedicatedServerBase.BanClient), BindingFlags.Instance | BindingFlags.Public) ??
+            throw new Exception("Failed to find patch method");
+
+        private static readonly MethodInfo _spaceRespawnComponentCreateNewIdentity =
+            typeof(MySpaceRespawnComponent).GetMethod(nameof(MySpaceRespawnComponent.CreateNewIdentity), BindingFlags.Instance | BindingFlags.Public) ??
+            throw new Exception("Failed to find patch method");
 
         public PerformanceMetricsManager(ITorchBase torchInstance, Persistent<Config> config) : base(torchInstance)
         {
@@ -99,10 +122,11 @@ namespace performance_metrics
             loadTimer.AutoReset = true;
             loadTimer.Start();
 
-            var asyncSaving = typeof(MyAsyncSaving);
             var perfMetricManager = typeof(PerformanceMetricsManager);
-            _ctx.GetPattern(asyncSaving.GetMethod(nameof(MyAsyncSaving.Start), BindingFlags.Static | BindingFlags.Public)).Prefixes.Add(perfMetricManager.GetMethod(nameof(PrefixAsyncSavingStart), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
-            _ctx.GetPattern(asyncSaving.GetMethod(nameof(MyAsyncSaving.Start), BindingFlags.Static | BindingFlags.Public)).Suffixes.Add(perfMetricManager.GetMethod(nameof(SuffixAsyncSavingStart), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
+            _ctx.GetPattern(_asyncSavingStart).Prefixes.Add(perfMetricManager.GetMethod(nameof(PrefixAsyncSavingStart), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
+            _ctx.GetPattern(_asyncSavingStart).Suffixes.Add(perfMetricManager.GetMethod(nameof(SuffixAsyncSavingStart), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
+            _ctx.GetPattern(_serverBanClient).Suffixes.Add(perfMetricManager.GetMethod(nameof(SuffixBanClient), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
+            _ctx.GetPattern(_spaceRespawnComponentCreateNewIdentity).Suffixes.Add(perfMetricManager.GetMethod(nameof(SuffixCreateNewIdentity), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic));
             _patchManager.Commit();
 
             LogManager.GetCurrentClassLogger().Info("Attached");
@@ -307,6 +331,25 @@ namespace performance_metrics
                             writer.WriteArrayEnd();
                             writer.WritePropertyName("SecondsInThePast");
                             writer.Write((DateTime.Now - ev.Occurred).TotalSeconds);
+                            writer.WriteObjectEnd();
+                        }
+                    }
+                    writer.WriteArrayEnd();
+                    break;
+                case "/metrics/v1/players":
+                    writer.WriteArrayStart();
+                    PlayerEvent playerEv;
+                    while (!playerEvents.Empty)
+                    {
+                        if (playerEvents.TryDequeueBack(out playerEv))
+                        {
+                            writer.WriteObjectStart();
+                            writer.WritePropertyName("Type");
+                            writer.Write(playerEv.Type);
+                            writer.WritePropertyName("SteamId");
+                            writer.Write(playerEv.SteamId);
+                            writer.WritePropertyName("MillisecondsInThePast");
+                            writer.Write((DateTime.Now - playerEv.Occurred).TotalMilliseconds);
                             writer.WriteObjectEnd();
                         }
                     }
@@ -917,6 +960,26 @@ namespace performance_metrics
             saveStopwatch.Stop();
             saveDuration += saveStopwatch.ElapsedMilliseconds;
             saveStopwatch.Reset();
+        }
+
+        public static void SuffixBanClient(ulong userId, bool banned)
+        {
+            playerEvents.EnqueueFront(new PlayerEvent
+            {
+                Type = banned ? "Ban" : "Unban",
+                SteamId = userId,
+                Occurred = DateTime.Now,
+            });
+        }
+
+        public static void SuffixCreateNewIdentity(string identityName, MyPlayer.PlayerId playerId, string modelName, bool initialPlayer = false)
+        {
+            playerEvents.EnqueueFront(new PlayerEvent
+            {
+                Type = "New",
+                SteamId = playerId.SteamId,
+                Occurred = DateTime.Now,
+            });
         }
     }
 }
